@@ -160,7 +160,6 @@ export default function App() {
         ctx.drawImage(layer.img, layer.x, layer.y, drawW, drawH);
         
         const blob = await new Promise(resolve => exportCanvas.toBlob(resolve, 'image/png'));
-        // ZIP logic: use original layer name exactly as provided
         zip.file(`${layer.name}.png`, blob);
       }
 
@@ -377,128 +376,325 @@ export default function App() {
   const currentLayer = layers.find(l => l.id === selectedLayerId);
 
   return (
-    <div className="flex h-screen bg-[#050505] text-gray-200 font-sans overflow-hidden">
-      <div className="w-80 border-r border-gray-800 bg-[#0e0e0e] flex flex-col z-20">
-        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#141414]">
-          <h2 className="font-bold flex items-center gap-2 text-blue-400 text-sm tracking-tight">
-            <LayoutGrid size={16} /> Asset Studio
+    <div className="studio-root">
+      <style>{`
+        :root {
+          --bg-deep: #050505;
+          --bg-panel: #0e0e0e;
+          --bg-header: #141414;
+          --border: #1f2937;
+          --accent-blue: #3b82f6;
+          --accent-emerald: #10b981;
+          --accent-red: #ef4444;
+          --text-main: #e5e7eb;
+          --text-muted: #6b7280;
+        }
+
+        .studio-root {
+          display: flex;
+          height: 100vh;
+          background: var(--bg-deep);
+          color: var(--text-main);
+          font-family: sans-serif;
+          overflow: hidden;
+        }
+
+        /* Sidebar & Panels */
+        .studio-sidebar {
+          width: 320px;
+          border-right: 1px solid var(--border);
+          background: var(--bg-panel);
+          display: flex;
+          flex-direction: column;
+          z-index: 20;
+        }
+
+        .panel-header {
+          padding: 1rem;
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: var(--bg-header);
+        }
+
+        .panel-title {
+          font-weight: bold;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: var(--accent-blue);
+          font-size: 0.875rem;
+          letter-spacing: -0.025em;
+          margin: 0;
+        }
+
+        /* Common Components */
+        .btn-icon {
+          cursor: pointer;
+          background: var(--accent-blue);
+          border: none;
+          color: white;
+          padding: 0.5rem;
+          border-radius: 8px;
+          transition: transform 0.1s;
+          display: flex;
+          align-items: center;
+        }
+        .btn-icon:active { transform: scale(0.95); }
+
+        .btn-bulk {
+          width: 100%;
+          padding: 0.75rem;
+          background: #065f46;
+          border: none;
+          color: white;
+          border-radius: 8px;
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          cursor: pointer;
+        }
+        .btn-bulk:disabled { background: #1f2937; cursor: not-allowed; }
+
+        /* Margin/Guide Sections */
+        .panel-section {
+          padding: 1rem;
+          border-bottom: 1px solid var(--border);
+        }
+        .section-label {
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .grid-2 { display: grid; grid-template-cols: 1fr 1fr; gap: 0.75rem; }
+        .range-input { width: 100%; height: 4px; accent-color: var(--accent-blue); }
+        .range-red { accent-color: #7f1d1d; }
+
+        /* Layer List */
+        .layer-container {
+          flex: 1;
+          overflow-y: auto;
+          padding: 0.75rem;
+        }
+        .layer-card {
+          padding: 0.5rem;
+          border-radius: 8px;
+          border: 1px solid transparent;
+          cursor: pointer;
+          margin-bottom: 0.5rem;
+          background: rgba(255,255,255,0.05);
+          transition: all 0.2s;
+        }
+        .layer-card.active {
+          background: rgba(59, 130, 246, 0.1);
+          border-color: rgba(59, 130, 246, 0.4);
+        }
+        .layer-content { display: flex; align-items: center; gap: 0.75rem; }
+        .layer-thumb {
+          width: 40px; height: 40px;
+          object-fit: contain;
+          background: black;
+          border: 1px solid var(--border);
+        }
+
+        /* Main Workspace */
+        .workspace {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+        }
+        .top-bar {
+          height: 56px;
+          background: var(--bg-panel);
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          align-items: center;
+          padding: 0 1.5rem;
+          justify-content: space-between;
+        }
+        .canvas-area {
+          flex: 1;
+          overflow: auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #060606;
+          padding: 4rem;
+        }
+        .canvas-wrapper {
+          position: relative;
+          background: white;
+          box-shadow: 0 0 120px rgba(0,0,0,0.9);
+          outline: 1px solid rgba(255,255,255,0.1);
+        }
+        canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+
+        .nudge-grid { display: grid; grid-template-cols: repeat(3, 1fr); gap: 4px; }
+        .btn-nudge { 
+          padding: 0.5rem; 
+          background: #1f2937; 
+          border: none; 
+          color: white; 
+          border-radius: 4px; 
+          cursor: pointer; 
+        }
+        .btn-nudge:hover { background: var(--accent-blue); }
+      `}</style>
+
+      {/* SIDEBAR */}
+      <div className="studio-sidebar">
+        <div className="panel-header">
+          <h2 className="panel-title">
+            <LayoutGrid size={16} /> ASSET STUDIO
           </h2>
-          <label className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg transition-transform active:scale-95 shadow-lg shadow-blue-900/20">
+          <label className="btn-icon">
             <Upload size={16} />
             <input type="file" multiple hidden onChange={handleFileUpload} accept="image/*" />
           </label>
         </div>
 
-        <div className="p-4 border-b border-gray-800 bg-emerald-500/5">
-            <button 
-                onClick={bulkAlign}
-                disabled={layers.length < 2}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-800 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
-            >
-                <Zap size={14} /> Bulk Align (1st Layer Ref)
+        <div className="panel-section" style={{ background: 'rgba(16, 185, 129, 0.05)' }}>
+            <button onClick={bulkAlign} disabled={layers.length < 2} className="btn-bulk">
+                <Zap size={14} /> Bulk Align (1st Ref)
             </button>
         </div>
 
-        <div className="p-4 bg-red-950/10 border-b border-gray-800 space-y-4">
-            <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-red-400 flex items-center gap-2">
+        {/* MARGINS */}
+        <div className="panel-section" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span className="section-label" style={{ color: 'var(--accent-red)', margin: 0 }}>
                     <Square size={12} /> Margins
                 </span>
                 <button 
                   onClick={() => setConstrainMargins(!constrainMargins)}
-                  className={`p-1 rounded transition-colors ${constrainMargins ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-500'}`}
+                  style={{ background: constrainMargins ? 'var(--accent-red)' : '#1f2937', border: 'none', borderRadius: '4px', padding: '2px 4px', color: 'white', cursor: 'pointer'}}
                 >
                   <LinkIcon size={12} />
                 </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid-2">
               {['top', 'bottom', 'left', 'right'].map(dir => (
-                <div key={dir} className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[8px] uppercase font-bold text-gray-600">{dir}</span>
-                    <span className="text-[9px] font-mono text-red-400">{margins[dir]}px</span>
+                <div key={dir}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', marginBottom: '4px' }}>
+                    <span style={{ textTransform: 'uppercase', color: '#4b5563' }}>{dir}</span>
+                    <span style={{ color: 'var(--accent-red)', fontFamily: 'monospace' }}>{margins[dir]}px</span>
                   </div>
-                  <input type="range" min="0" max="500" value={margins[dir]} onChange={(e) => {
+                  <input type="range" min="0" max="500" value={margins[dir]} 
+                    onChange={(e) => {
                       const v = parseInt(e.target.value);
                       if (constrainMargins) setMargins({ top: v, bottom: v, left: v, right: v });
                       else setMargins(prev => ({ ...prev, [dir]: v }));
-                    }} className="w-full accent-red-600/40 h-1" />
+                    }} className="range-input range-red" />
                 </div>
               ))}
             </div>
         </div>
 
-        <div className="p-4 bg-gray-900/20 border-b border-gray-800 space-y-3">
-            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
-                <span className="flex items-center gap-2"><MoveHorizontal size={12} /> Custom Guides</span>
-                <div className="flex gap-1">
-                    <button onClick={() => addGuide('v')} className="bg-gray-800 hover:bg-gray-700 px-1.5 py-0.5 rounded text-[8px]">V+</button>
-                    <button onClick={() => addGuide('h')} className="bg-gray-800 hover:bg-gray-700 px-1.5 py-0.5 rounded text-[8px]">H+</button>
+        {/* CUSTOM GUIDES */}
+        <div className="panel-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span className="section-label" style={{ color: '#9ca3af', margin: 0 }}>
+                    <MoveHorizontal size={12} /> Guides
+                </span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                    <button onClick={() => addGuide('v')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '2px 6px', fontSize: '8px', borderRadius: '4px' }}>V+</button>
+                    <button onClick={() => addGuide('h')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '2px 6px', fontSize: '8px', borderRadius: '4px' }}>H+</button>
                 </div>
             </div>
-            <div className="max-h-24 overflow-y-auto custom-scrollbar space-y-1 pr-1">
-                {vGuides.map((g, i) => (
-                    <div key={`v-${i}`} className="flex items-center justify-between bg-black/40 p-1 rounded border border-gray-800">
-                        <span className="text-[9px] text-gray-500 font-bold px-1">V</span>
-                        <input type="number" value={Math.round(g)} onChange={e => setVGuides(prev => prev.map((v, idx) => idx === i ? parseInt(e.target.value) : v))} className="bg-transparent text-[10px] w-12 font-mono text-red-300" />
-                        <button onClick={() => setVGuides(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-500"><X size={10} /></button>
-                    </div>
-                ))}
-                {hGuides.map((g, i) => (
-                    <div key={`h-${i}`} className="flex items-center justify-between bg-black/40 p-1 rounded border border-gray-800">
-                        <span className="text-[9px] text-gray-500 font-bold px-1">H</span>
-                        <input type="number" value={Math.round(g)} onChange={e => setHGuides(prev => prev.map((v, idx) => idx === i ? parseInt(e.target.value) : v))} className="bg-transparent text-[10px] w-12 font-mono text-red-300" />
-                        <button onClick={() => setHGuides(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-500"><X size={10} /></button>
+            <div style={{ maxHeight: '100px', overflowY: 'auto' }} className="custom-scrollbar">
+                {[...vGuides.map((g, i) => ({val: g, type: 'v', id: i})), ...hGuides.map((g, i) => ({val: g, type: 'h', id: i}))].map((item) => (
+                    <div key={`${item.type}-${item.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'black', padding: '4px', borderRadius: '4px', marginBottom: '2px', border: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#4b5563', padding: '0 4px' }}>{item.type.toUpperCase()}</span>
+                        <input 
+                            type="number" 
+                            value={Math.round(item.val)} 
+                            onChange={e => {
+                                const setter = item.type === 'v' ? setVGuides : setHGuides;
+                                setter(prev => prev.map((v, idx) => idx === item.id ? parseInt(e.target.value) : v));
+                            }} 
+                            style={{ background: 'transparent', border: 'none', color: '#fca5a5', fontSize: '10px', width: '40px', textAlign: 'center' }}
+                        />
+                        <button onClick={() => {
+                            const setter = item.type === 'v' ? setVGuides : setHGuides;
+                            setter(prev => prev.filter((_, idx) => idx !== item.id));
+                        }} style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer' }}><X size={10} /></button>
                     </div>
                 ))}
             </div>
         </div>
 
+        {/* TRANSFORM (Selected Layer) */}
         {currentLayer && (
-            <div className="p-4 bg-blue-600/5 border-b border-gray-800 space-y-4">
-                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-blue-500">
-                    <span className="flex items-center gap-2"><Maximize size={12} /> Transform</span>
-                    <span className="font-mono">{(currentLayer.scale * 100).toFixed(1)}%</span>
+            <div className="panel-section" style={{ background: 'rgba(59, 130, 246, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <span className="section-label" style={{ color: 'var(--accent-blue)', margin: 0 }}>
+                        <Maximize size={12} /> Transform
+                    </span>
+                    <span style={{ fontSize: '10px', fontFamily: 'monospace' }}>{(currentLayer.scale * 100).toFixed(1)}%</span>
                 </div>
-                <input type="range" min="0.01" max="2" step="0.01" value={currentLayer.scale} onChange={e => updateLayer(currentLayer.id, { scale: parseFloat(e.target.value) })} className="w-full accent-blue-500 h-1" />
-                <div className="flex justify-center gap-1">
-                    <div className="grid grid-cols-3 gap-1">
-                        <div /> <button onClick={() => nudge('up')} className="p-2 bg-gray-800 rounded hover:bg-blue-600 transition-colors"><ChevronUp size={14}/></button> <div />
-                        <button onClick={() => nudge('left')} className="p-2 bg-gray-800 rounded hover:bg-blue-600 transition-colors"><ChevronLeft size={14}/></button>
-                        <button onClick={() => nudge('down')} className="p-2 bg-gray-800 rounded hover:bg-blue-600 transition-colors"><ChevronDown size={14}/></button>
-                        <button onClick={() => nudge('right')} className="p-2 bg-gray-800 rounded hover:bg-blue-600 transition-colors"><ChevronRight size={14}/></button>
+                <input type="range" min="0.01" max="2" step="0.01" value={currentLayer.scale} onChange={e => updateLayer(currentLayer.id, { scale: parseFloat(e.target.value) })} className="range-input" />
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+                    <div className="nudge-grid">
+                        <div /> <button onClick={() => nudge('up')} className="btn-nudge"><ChevronUp size={14}/></button> <div />
+                        <button onClick={() => nudge('left')} className="btn-nudge"><ChevronLeft size={14}/></button>
+                        <button onClick={() => nudge('down')} className="btn-nudge"><ChevronDown size={14}/></button>
+                        <button onClick={() => nudge('right')} className="btn-nudge"><ChevronRight size={14}/></button>
                     </div>
                 </div>
             </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+        {/* LAYERS */}
+        <div className="layer-container custom-scrollbar">
           {layers.map((layer, idx) => (
-            <div key={layer.id} onClick={() => setSelectedLayerId(layer.id)} className={`p-2 rounded-lg border transition-all cursor-pointer ${selectedLayerId === layer.id ? 'bg-blue-600/10 border-blue-500/40' : 'bg-white/5 border-transparent'}`}>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <img src={layer.thumbnail} alt="" className={`w-10 h-10 object-contain bg-black border border-gray-800 ${!layer.visible ? 'opacity-20 grayscale' : ''}`} />
-                  {!layer.visible && <div className="absolute inset-0 flex items-center justify-center"><EyeOff size={14} className="text-gray-500" /></div>}
+            <div key={layer.id} onClick={() => setSelectedLayerId(layer.id)} className={`layer-card ${selectedLayerId === layer.id ? 'active' : ''}`}>
+              <div className="layer-content">
+                <div style={{ position: 'relative' }}>
+                  <img src={layer.thumbnail} alt="" className="layer-thumb" style={{ opacity: layer.visible ? 1 : 0.2 }} />
+                  {!layer.visible && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><EyeOff size={12} /></div>}
                 </div>
-                <div className="flex-1 min-w-0">
-                    <p className={`text-[10px] font-bold truncate ${!layer.visible ? 'text-gray-600' : 'text-gray-200'}`}>{layer.name}</p>
-                    {idx === 0 && <span className="text-[7px] text-emerald-400 font-black uppercase tracking-tighter">Master Reference</span>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '10px', fontWeight: 'bold', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{layer.name}</p>
+                    {idx === 0 && <span style={{ fontSize: '7px', color: 'var(--accent-emerald)', fontWeight: 900, textTransform: 'uppercase' }}>Master Reference</span>}
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }} className={`p-1.5 rounded ${layer.visible ? 'text-blue-400' : 'text-gray-600'}`}>{layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}</button>
-                  <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id) }} className="text-red-500 p-1.5 hover:bg-red-500/10 rounded"><Trash2 size={12} /></button>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }} style={{ background: 'none', border: 'none', color: layer.visible ? 'var(--accent-blue)' : '#4b5563', cursor: 'pointer' }}>
+                    {layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id) }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               </div>
             </div>
           )).reverse()}
         </div>
 
-        <div className="p-4 border-t border-gray-800 space-y-2 bg-[#121212]">
-          <div className="flex gap-2">
-            <button onClick={() => setShowGuidelines(!showGuidelines)} className={`flex-1 py-2 rounded text-[10px] font-bold uppercase transition-colors ${showGuidelines ? 'bg-red-600/20 text-red-400 border border-red-500/30' : 'bg-gray-800 text-gray-500'}`}>Guides</button>
-            <button onClick={() => setUseSnapping(!useSnapping)} className={`flex-1 py-2 rounded text-[10px] font-bold uppercase transition-colors ${useSnapping ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800 text-gray-500'}`}>Snap</button>
+        {/* FOOTER ACTIONS */}
+        <div className="panel-section" style={{ borderTop: '1px solid var(--border)', background: '#121212' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <button onClick={() => setShowGuidelines(!showGuidelines)} style={{ flex: 1, padding: '8px', fontSize: '10px', background: showGuidelines ? 'rgba(239, 68, 68, 0.1)' : '#1f2937', color: showGuidelines ? 'var(--accent-red)' : '#6b7280', border: '1px solid transparent', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>GUIDES</button>
+            <button onClick={() => setUseSnapping(!useSnapping)} style={{ flex: 1, padding: '8px', fontSize: '10px', background: useSnapping ? 'rgba(16, 185, 129, 0.1)' : '#1f2937', color: useSnapping ? 'var(--accent-emerald)' : '#6b7280', border: '1px solid transparent', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>SNAP</button>
           </div>
-          <div className="flex gap-2">
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => {
                   const was = showGuidelines; setShowGuidelines(false);
                   setTimeout(() => {
@@ -508,38 +704,37 @@ export default function App() {
                       link.click();
                       setShowGuidelines(was);
                   }, 100);
-              }} className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><Download size={14} /> Comp</button>
-            <button onClick={handleBulkZipExport} disabled={isExportingZip || layers.length === 0} className="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-800 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-              {isExportingZip ? <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/20 border-t-white" /> : <Archive size={14} />} Bulk ZIP</button>
+              }} style={{ flex: 1, background: 'var(--accent-blue)', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <Download size={14} /> COMP
+            </button>
+            <button onClick={handleBulkZipExport} disabled={isExportingZip || layers.length === 0} style={{ flex: 1, background: '#059669', color: 'white', border: 'none', padding: '10px', borderRadius: '8px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {isExportingZip ? '...' : <Archive size={14} />} BULK ZIP
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col relative">
-        <div className="h-14 bg-[#0e0e0e] border-b border-gray-800 flex items-center px-6 justify-between">
-          <div className="flex items-center gap-4 bg-black/40 px-4 py-1.5 rounded-full border border-gray-800">
-                <span className="text-[10px] uppercase font-bold text-gray-600 tracking-widest">Zoom</span>
-                <input type="range" min="0.1" max="1.5" step="0.05" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-24 accent-blue-600 h-1" />
-                <span className="text-[11px] font-mono font-black text-blue-500 w-10 text-right">{Math.round(zoom * 100)}%</span>
+      {/* WORKSPACE */}
+      <div className="workspace">
+        <div className="top-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.4)', padding: '6px 16px', borderRadius: '99px', border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Zoom</span>
+            <input type="range" min="0.1" max="1.5" step="0.05" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} style={{ width: '100px', accentColor: 'var(--accent-blue)' }} />
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-blue)', width: '30px', textAlign: 'right' }}>{Math.round(zoom * 100)}%</span>
           </div>
         </div>
-        <div className="flex-1 overflow-auto flex items-center justify-center bg-[#060606] p-16 relative" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-          <div className="relative bg-white shadow-[0_0_120px_rgba(0,0,0,0.9)] ring-1 ring-white/10" style={{ width: `${CANVAS_SIZE * zoom}px`, height: `${CANVAS_SIZE * zoom}px` }}>
-            <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} onMouseDown={handleMouseDown} className="w-full h-full block cursor-crosshair touch-none" />
+
+        <div className="canvas-area" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+          <div className="canvas-wrapper" style={{ width: `${CANVAS_SIZE * zoom}px`, height: `${CANVAS_SIZE * zoom}px` }}>
+            <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} onMouseDown={handleMouseDown} />
           </div>
         </div>
-        <div className="h-10 bg-[#0e0e0e] border-t border-gray-800 px-6 flex items-center text-[9px] font-bold text-gray-600 gap-8 uppercase tracking-[0.2em]">
+
+        <div style={{ height: '40px', background: 'var(--bg-panel)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 1.5rem', fontSize: '9px', fontWeight: 'bold', color: '#4b5563', gap: '2rem', textTransform: 'uppercase', letterSpacing: '0.2em' }}>
             <span>1000x1000 Master Grid</span>
-            <span className="text-blue-400">Hold Shift for Aspect Ratio (Coming soon)</span>
+            <span style={{ color: 'var(--accent-blue)' }}>PCJ Systems Asset Pipeline v2.0</span>
         </div>
       </div>
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #333; }
-      `}</style>
     </div>
   );
 }

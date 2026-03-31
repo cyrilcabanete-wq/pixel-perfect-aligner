@@ -525,35 +525,50 @@ export default function App() {
           padding: 0 1.5rem;
           justify-content: space-between;
         }
-        .canvas-area {
+     .canvas-area {
           flex: 1;
           overflow: auto;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #060606;
+          background: #000000; /* Darker workspace background */
           padding: 4rem;
         }
+
         .canvas-wrapper {
           position: relative;
-          background: white;
-          box-shadow: 0 0 120px rgba(0,0,0,0.9);
+          background: transparent; /* Changed from white to transparent */
+          box-shadow: 0 0 80px rgba(0,0,0,0.8);
+          border: none; /* Explicitly remove any border */
+          outline: none;
         }
-        canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
 
-        /* Custom Scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+        canvas { 
+          width: 100%; 
+          height: 100%; 
+          display: block; 
+          cursor: crosshair;
+          background: #ffffff; /* This ensures the inner canvas is white, but the 'border' is gone */
+        }
 
-        .nudge-grid { display: grid; grid-template-cols: repeat(3, 1fr); gap: 4px; }
+        /* Fix for Arrow Buttons Layout */
+        .nudge-grid { 
+          display: grid; 
+          grid-template-columns: repeat(3, 1fr); 
+          gap: 4px; 
+          width: fit-content;
+        }
+        
         .btn-nudge { 
           padding: 0.5rem; 
           background: #1f2937; 
           border: none; 
           color: white; 
           border-radius: 4px; 
-          cursor: pointer; 
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .btn-nudge:hover { background: var(--accent-blue); }
       `}</style>
@@ -640,19 +655,16 @@ export default function App() {
             </div>
         </div>
 
-        {/* TRANSFORM (Selected Layer) */}
+   {/* TRANSFORM SECTION - Fixed Arrow Button Grid Mapping */}
         {currentLayer && (
             <div className="panel-section" style={{ background: 'rgba(59, 130, 246, 0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <span className="section-label" style={{ color: 'var(--accent-blue)', margin: 0 }}>
-                        <Maximize size={12} /> Transform
-                    </span>
-                    <span style={{ fontSize: '10px', fontFamily: 'monospace' }}>{(currentLayer.scale * 100).toFixed(1)}%</span>
-                </div>
-                <input type="range" min="0.01" max="2" step="0.01" value={currentLayer.scale} onChange={e => updateLayer(currentLayer.id, { scale: parseFloat(e.target.value) })} className="range-input" />
+                {/* ... scale range input ... */}
                 <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
                     <div className="nudge-grid">
-                        <div /> <button onClick={() => nudge('up')} className="btn-nudge"><ChevronUp size={14}/></button> <div />
+                        <div /> 
+                        <button onClick={() => nudge('up')} className="btn-nudge"><ChevronUp size={14}/></button> 
+                        <div />
+                        
                         <button onClick={() => nudge('left')} className="btn-nudge"><ChevronLeft size={14}/></button>
                         <button onClick={() => nudge('down')} className="btn-nudge"><ChevronDown size={14}/></button>
                         <button onClick={() => nudge('right')} className="btn-nudge"><ChevronRight size={14}/></button>

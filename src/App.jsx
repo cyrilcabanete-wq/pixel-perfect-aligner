@@ -154,9 +154,11 @@ export default function App() {
       for (const layer of layers) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        
         const drawW = layer.img.width * layer.scale;
         const drawH = layer.img.height * layer.scale;
         ctx.drawImage(layer.img, layer.x, layer.y, drawW, drawH);
+        
         const blob = await new Promise(resolve => exportCanvas.toBlob(resolve, 'image/png'));
         zip.file(`${layer.name}.png`, blob);
       }
@@ -292,7 +294,6 @@ export default function App() {
 
   const handleMouseMove = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    if (!rect) return;
     const canvasScale = CANVAS_SIZE / rect.width;
     const currentX = (e.clientX - rect.left) * canvasScale;
     const currentY = (e.clientY - rect.top) * canvasScale;
@@ -335,26 +336,11 @@ export default function App() {
         const snaps = { x: [], y: [] };
 
         if (useSnapping) {
-          // Snap logic: iterate through points of the box and snap to global coordinates
-          const boxPointsX = [realX, realX + realW/2, realX + realW];
-          const boxPointsY = [realY, realY + realH/2, realY + realH];
-
-          boxPointsX.forEach(p => {
-            snapX.forEach(g => {
-              if (Math.abs(p - g) < SNAP_THRESHOLD) {
-                nx += (g - p);
-                snaps.x.push(g);
-              }
-            });
+          [realX, realX + realW/2, realX + realW].forEach(p => {
+            snapX.forEach(g => { if (Math.abs(p - g) < SNAP_THRESHOLD) { nx += (g - p); snaps.x.push(g); } });
           });
-
-          boxPointsY.forEach(p => {
-            snapY.forEach(g => {
-              if (Math.abs(p - g) < SNAP_THRESHOLD) {
-                ny += (g - p);
-                snaps.y.push(g);
-              }
-            });
+          [realY, realY + realH/2, realY + realH].forEach(p => {
+            snapY.forEach(g => { if (Math.abs(p - g) < SNAP_THRESHOLD) { ny += (g - p); snaps.y.push(g); } });
           });
         }
         setActiveSnaps(snaps);
@@ -390,8 +376,9 @@ export default function App() {
   const currentLayer = layers.find(l => l.id === selectedLayerId);
 
   return (
-    <div className="flex h-screen bg-[#050505] text-gray-200 font-sans overflow-hidden">
-      <div className="w-80 border-r border-gray-800 bg-[#0e0e0e] flex flex-col z-20">
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#050505', color: '#e5e7eb', fontFamily: 'sans-serif', overflow: 'hidden' }}>
+      {/* Sidebar */}
+      <div style={{ width: '320px', borderRight: '1px solid #1f2937', backgroundColor: '#0e0e0e', display: 'flex', flexDirection: 'column', zIndex: 20 }}>
         <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#141414]">
           <h2 className="font-bold flex items-center gap-2 text-blue-400 text-sm tracking-tight">
             <LayoutGrid size={16} /> Asset Studio
@@ -412,6 +399,7 @@ export default function App() {
             </button>
         </div>
 
+        {/* Margins */}
         <div className="p-4 bg-red-950/10 border-b border-gray-800 space-y-4">
             <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest text-red-400 flex items-center gap-2">
@@ -441,6 +429,7 @@ export default function App() {
             </div>
         </div>
 
+        {/* Custom Guides */}
         <div className="p-4 bg-gray-900/20 border-b border-gray-800 space-y-3">
             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
                 <span className="flex items-center gap-2"><MoveHorizontal size={12} /> Custom Guides</span>
@@ -467,6 +456,7 @@ export default function App() {
             </div>
         </div>
 
+        {/* Transform Controls */}
         {currentLayer && (
             <div className="p-4 bg-blue-600/5 border-b border-gray-800 space-y-4">
                 <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-blue-500">
@@ -485,6 +475,7 @@ export default function App() {
             </div>
         )}
 
+        {/* Layers List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
           {layers.map((layer, idx) => (
             <div key={layer.id} onClick={() => setSelectedLayerId(layer.id)} className={`p-2 rounded-lg border transition-all cursor-pointer ${selectedLayerId === layer.id ? 'bg-blue-600/10 border-blue-500/40' : 'bg-white/5 border-transparent'}`}>
@@ -506,6 +497,7 @@ export default function App() {
           )).reverse()}
         </div>
 
+        {/* Footer Sidebar Actions */}
         <div className="p-4 border-t border-gray-800 space-y-2 bg-[#121212]">
           <div className="flex gap-2">
             <button onClick={() => setShowGuidelines(!showGuidelines)} className={`flex-1 py-2 rounded text-[10px] font-bold uppercase transition-colors ${showGuidelines ? 'bg-red-600/20 text-red-400 border border-red-500/30' : 'bg-gray-800 text-gray-500'}`}>Guides</button>
@@ -528,31 +520,26 @@ export default function App() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col relative">
-        <div className="h-14 bg-[#0e0e0e] border-b border-gray-800 flex items-center px-6 justify-between">
+      {/* Main Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <div style={{ height: '56px', backgroundColor: '#0e0e0e', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', padding: '0 24px', justifyContent: 'space-between' }}>
           <div className="flex items-center gap-4 bg-black/40 px-4 py-1.5 rounded-full border border-gray-800">
                 <span className="text-[10px] uppercase font-bold text-gray-600 tracking-widest">Zoom</span>
                 <input type="range" min="0.1" max="1.5" step="0.05" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-24 accent-blue-600 h-1" />
                 <span className="text-[11px] font-mono font-black text-blue-500 w-10 text-right">{Math.round(zoom * 100)}%</span>
           </div>
         </div>
-        <div className="flex-1 overflow-auto flex items-center justify-center bg-[#060606] p-16 relative">
-          <div className="relative bg-white shadow-[0_0_120px_rgba(0,0,0,0.9)] ring-1 ring-white/10" style={{ width: `${CANVAS_SIZE * zoom}px`, height: `${CANVAS_SIZE * zoom}px` }}>
-            <canvas 
-              ref={canvasRef} 
-              width={CANVAS_SIZE} 
-              height={CANVAS_SIZE} 
-              onMouseDown={handleMouseDown} 
-              onMouseMove={handleMouseMove} 
-              onMouseUp={handleMouseUp} 
-              onMouseLeave={handleMouseUp} 
-              className="w-full h-full block cursor-crosshair touch-none" 
-            />
+        
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#060606', padding: '64px', position: 'relative' }} 
+             onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+          <div style={{ position: 'relative', backgroundColor: 'white', boxShadow: '0 0 120px rgba(0,0,0,0.9)', outline: '1px solid rgba(255,255,255,0.1)', width: `${CANVAS_SIZE * zoom}px`, height: `${CANVAS_SIZE * zoom}px` }}>
+            <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} onMouseDown={handleMouseDown} style={{ width: '100%', height: '100%', display: 'block', cursor: 'crosshair', touchAction: 'none' }} />
           </div>
         </div>
-        <div className="h-10 bg-[#0e0e0e] border-t border-gray-800 px-6 flex items-center text-[9px] font-bold text-gray-600 gap-8 uppercase tracking-[0.2em]">
+
+        <div style={{ height: '40px', backgroundColor: '#0e0e0e', borderTop: '1px solid #1f2937', padding: '0 24px', display: 'flex', alignItems: 'center', fontSize: '9px', fontWeight: 'bold', color: '#4b5563', gap: '32px', textTransform: 'uppercase', letterSpacing: '0.2em' }}>
             <span>1000x1000 Master Grid</span>
-            <span className="text-blue-400">Hold Shift for Aspect Ratio (Coming soon)</span>
+            <span style={{ color: '#60a5fa' }}>Hold Shift for Aspect Ratio (Coming soon)</span>
         </div>
       </div>
 
@@ -561,6 +548,7 @@ export default function App() {
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #333; }
+        body { margin: 0; padding: 0; background-color: #050505; }
       `}</style>
     </div>
   );

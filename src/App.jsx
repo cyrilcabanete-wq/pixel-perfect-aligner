@@ -24,7 +24,6 @@ const SNAP_THRESHOLD = 15;
 const GUIDE_HIT_WIDTH = 25; 
 const RESIZE_HANDLE_SIZE = 12;
 
-// Intelligent content-aware bounding box detection
 const getContentBounds = (img) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -375,48 +374,180 @@ export default function App() {
 
   const currentLayer = layers.find(l => l.id === selectedLayerId);
 
-  // Styles
-  const S = {
-    container: { display: 'flex', height: '100vh', width: '100%', backgroundColor: '#050505', color: '#e5e7eb', overflow: 'hidden', fontFamily: 'sans-serif' },
-    sidebar: { width: '320px', height: '100%', borderRight: '1px solid #1f2937', backgroundColor: '#0e0e0e', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 20 },
-    header: { padding: '16px', borderBottom: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#141414' },
-    btnPrimary: { backgroundColor: '#2563eb', color: 'white', padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    btnAction: { width: '100%', padding: '12px', color: 'white', borderRadius: '8px', fontSize: '10px', fontWeight: '900', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
-    labelCaps: { fontSize: '10px', fontWeight: '900', color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase' },
-    section: { padding: '16px', borderBottom: '1px solid #1f2937' },
-    layerCard: (active) => ({ padding: '8px', borderRadius: '8px', border: '1px solid', borderColor: active ? '#3b82f6' : 'transparent', backgroundColor: active ? 'rgba(59, 130, 246, 0.1)' : '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }),
-    scrollBox: { flex: 1, overflowY: 'auto', padding: '16px' }
-  };
-
   return (
-    <div style={S.container}>
+    <div className="app-container">
+      <style>{`
+        body, html {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: #050505;
+        }
+        .app-container {
+          display: flex;
+          height: 100vh;
+          width: 100vw;
+          background-color: #050505;
+          color: #e5e7eb;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          overflow: hidden;
+        }
+        .sidebar {
+          width: 320px;
+          height: 100%;
+          border-right: 1px solid #1f2937;
+          background-color: #0e0e0e;
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+          z-index: 20;
+        }
+        .sidebar-header {
+          padding: 16px;
+          border-bottom: 1px solid #1f2937;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background-color: #141414;
+        }
+        .section {
+          padding: 16px;
+          border-bottom: 1px solid #1f2937;
+        }
+        .btn-primary {
+          background-color: #2563eb;
+          color: white;
+          padding: 8px;
+          border-radius: 8px;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .btn-action {
+          width: 100%;
+          padding: 12px;
+          color: white;
+          border-radius: 8px;
+          font-size: 10px;
+          font-weight: 900;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          text-transform: uppercase;
+        }
+        .label-caps {
+          font-size: 10px;
+          font-weight: 900;
+          color: #6b7280;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+        .scroll-box {
+          flex: 1;
+          overflow-y: auto;
+          padding: 16px;
+        }
+        .layer-card {
+          padding: 8px;
+          border-radius: 8px;
+          border: 1px solid transparent;
+          background-color: #1f2937;
+          margin-bottom: 8px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .layer-card.active {
+          border-color: #3b82f6;
+          background-color: rgba(59, 130, 246, 0.1);
+        }
+        .workspace {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          position: relative;
+        }
+        .workspace-toolbar {
+          height: 56px;
+          background-color: #0e0e0e;
+          border-bottom: 1px solid #1f2937;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .zoom-control {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          background: #000;
+          padding: 6px 16px;
+          border-radius: 20px;
+          border: 1px solid #1f2937;
+        }
+        .canvas-area {
+          flex: 1;
+          overflow: auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 64px;
+          background-color: #060606;
+        }
+        .status-bar {
+          height: 32px;
+          background-color: #0e0e0e;
+          border-top: 1px solid #1f2937;
+          display: flex;
+          align-items: center;
+          font-size: 9px;
+          color: #374151;
+          letter-spacing: 0.1em;
+          padding: 0 16px;
+          text-transform: uppercase;
+        }
+        input[type="range"] {
+          cursor: pointer;
+        }
+      `}</style>
+
       {/* Sidebar */}
-      <div style={S.sidebar}>
-        <div style={S.header}>
-          <h2 style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: '#60a5fa', fontSize: '14px' }}>
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <h2 style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: '#60a5fa', fontSize: '14px', margin: 0 }}>
             <LayoutGrid size={16} /> Asset Studio
           </h2>
-          <label style={S.btnPrimary}>
+          <label className="btn-primary">
             <Upload size={16} />
             <input type="file" multiple hidden onChange={handleFileUpload} accept="image/*" />
           </label>
         </div>
 
-        {/* Bulk Align Tool */}
-        <div style={S.section}>
+        {/* Bulk Align */}
+        <div className="section">
             <button 
                 onClick={bulkAlign}
                 disabled={layers.length < 2}
-                style={{ ...S.btnAction, backgroundColor: layers.length < 2 ? '#374151' : '#059669' }}
+                className="btn-action"
+                style={{ backgroundColor: layers.length < 2 ? '#374151' : '#059669' }}
             >
-                <Zap size={14} /> BULK ALIGN (1ST REF)
+                <Zap size={14} /> Bulk Align (1st Ref)
             </button>
         </div>
 
-        {/* Margins */}
-        <div style={S.section}>
+        {/* Margins Control */}
+        <div className="section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-               <span style={{ ...S.labelCaps, color: '#f87171' }}><Square size={10} style={{marginRight:4}}/> MARGINS</span>
+               <span className="label-caps" style={{ color: '#f87171', display: 'flex', alignItems: 'center' }}><Square size={10} style={{marginRight:4}}/> Margins</span>
                <button onClick={() => setConstrainMargins(!constrainMargins)} style={{ background: constrainMargins ? '#dc2626' : '#1f2937', border: 'none', color: 'white', padding: '4px', borderRadius: '4px', cursor: 'pointer' }}><LinkIcon size={12}/></button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -437,25 +568,25 @@ export default function App() {
         </div>
 
         {/* Custom Guides */}
-        <div style={S.section}>
+        <div className="section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={S.labelCaps}><MoveHorizontal size={10} style={{marginRight:4}}/> GUIDES</span>
+                <span className="label-caps" style={{ display: 'flex', alignItems: 'center' }}><MoveHorizontal size={10} style={{marginRight:4}}/> Guides</span>
                 <div style={{ display: 'flex', gap: '4px' }}>
-                    <button onClick={() => addGuide('v')} style={{ background: '#374151', border: 'none', color: 'white', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }}>V+</button>
-                    <button onClick={() => addGuide('h')} style={{ background: '#374151', border: 'none', color: 'white', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }}>H+</button>
+                    <button onClick={() => addGuide('v')} style={{ background: '#374151', border: 'none', color: 'white', fontSize: '9px', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}>V+</button>
+                    <button onClick={() => addGuide('h')} style={{ background: '#374151', border: 'none', color: 'white', fontSize: '9px', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}>H+</button>
                 </div>
             </div>
             <div style={{ maxHeight: '80px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {vGuides.map((g, i) => (
                     <div key={`v-${i}`} style={{ display: 'flex', alignItems: 'center', background: '#000', padding: '4px 8px', borderRadius: '4px', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: '9px', color: '#6b7280' }}>V: {Math.round(g)}px</span>
-                        <button onClick={() => setVGuides(vGuides.filter((_, idx) => idx !== i))} style={{ color: '#ef4444', background: 'none', border: 'none' }}><X size={10} /></button>
+                        <button onClick={() => setVGuides(vGuides.filter((_, idx) => idx !== i))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><X size={10} /></button>
                     </div>
                 ))}
                 {hGuides.map((g, i) => (
                     <div key={`h-${i}`} style={{ display: 'flex', alignItems: 'center', background: '#000', padding: '4px 8px', borderRadius: '4px', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: '9px', color: '#6b7280' }}>H: {Math.round(g)}px</span>
-                        <button onClick={() => setHGuides(hGuides.filter((_, idx) => idx !== i))} style={{ color: '#ef4444', background: 'none', border: 'none' }}><X size={10} /></button>
+                        <button onClick={() => setHGuides(hGuides.filter((_, idx) => idx !== i))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><X size={10} /></button>
                     </div>
                 ))}
             </div>
@@ -463,32 +594,32 @@ export default function App() {
 
         {/* Transform Tools */}
         {currentLayer && (
-            <div style={{ ...S.section, backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
+            <div className="section" style={{ backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ ...S.labelCaps, color: '#3b82f6' }}><Maximize size={10} /> TRANSFORM</span>
+                    <span className="label-caps" style={{ color: '#3b82f6', display: 'flex', alignItems: 'center' }}><Maximize size={10} style={{marginRight:4}}/> Transform</span>
                     <span style={{ fontSize: '10px', color: '#3b82f6' }}>{(currentLayer.scale * 100).toFixed(1)}%</span>
                 </div>
                 <input type="range" min="0.01" max="2" step="0.01" value={currentLayer.scale} onChange={e => updateLayer(currentLayer.id, { scale: parseFloat(e.target.value) })} style={{ width: '100%', accentColor: '#3b82f6', marginBottom: '12px' }} />
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
-                        <div/> <button onClick={() => nudge('up')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '4px', borderRadius: '4px' }}><ChevronUp size={14}/></button> <div/>
-                        <button onClick={() => nudge('left')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '4px', borderRadius: '4px' }}><ChevronLeft size={14}/></button>
-                        <button onClick={() => nudge('down')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '4px', borderRadius: '4px' }}><ChevronDown size={14}/></button>
-                        <button onClick={() => nudge('right')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '4px', borderRadius: '4px' }}><ChevronRight size={14}/></button>
+                        <div/> <button onClick={() => nudge('up')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}><ChevronUp size={14}/></button> <div/>
+                        <button onClick={() => nudge('left')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}><ChevronLeft size={14}/></button>
+                        <button onClick={() => nudge('down')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}><ChevronDown size={14}/></button>
+                        <button onClick={() => nudge('right')} style={{ background: '#1f2937', color: 'white', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}><ChevronRight size={14}/></button>
                     </div>
                 </div>
             </div>
         )}
 
         {/* Layers List */}
-        <div style={S.scrollBox}>
-            <p style={{ ...S.labelCaps, marginBottom: '12px' }}>LAYERS ({layers.length})</p>
+        <div className="scroll-box">
+            <p className="label-caps" style={{ marginBottom: '12px' }}>Layers ({layers.length})</p>
             {layers.map((layer, idx) => (
-                <div key={layer.id} onClick={() => setSelectedLayerId(layer.id)} style={S.layerCard(selectedLayerId === layer.id)}>
+                <div key={layer.id} onClick={() => setSelectedLayerId(layer.id)} className={`layer-card ${selectedLayerId === layer.id ? 'active' : ''}`}>
                     <img src={layer.thumbnail} style={{ width: '36px', height: '36px', background: 'black', objectFit: 'contain', border: '1px solid #374151', opacity: layer.visible ? 1 : 0.2 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '10px', fontWeight: 'bold', color: layer.visible ? '#e5e7eb' : '#4b5563', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layer.name}</p>
-                        {idx === 0 && <p style={{ fontSize: '7px', color: '#10b981', fontWeight: 'bold' }}>MASTER REF</p>}
+                        <p style={{ fontSize: '10px', fontWeight: 'bold', color: layer.visible ? '#e5e7eb' : '#4b5563', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{layer.name}</p>
+                        {idx === 0 && <p style={{ fontSize: '7px', color: '#10b981', fontWeight: 'bold', margin: 0, marginTop: 2 }}>MASTER REF</p>}
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                         <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }} style={{ color: layer.visible ? '#3b82f6' : '#4b5563', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -505,8 +636,8 @@ export default function App() {
         {/* Footer Actions */}
         <div style={{ padding: '16px', borderTop: '1px solid #1f2937', backgroundColor: '#111827' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                <button onClick={() => setShowGuidelines(!showGuidelines)} style={{ flex: 1, padding: '8px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #374151', background: showGuidelines ? '#ef444422' : 'transparent', color: showGuidelines ? '#ef4444' : '#6b7280' }}>GUIDES</button>
-                <button onClick={() => setUseSnapping(!useSnapping)} style={{ flex: 1, padding: '8px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #374151', background: useSnapping ? '#10b98122' : 'transparent', color: useSnapping ? '#10b981' : '#6b7280' }}>SNAPPING</button>
+                <button onClick={() => setShowGuidelines(!showGuidelines)} style={{ flex: 1, padding: '8px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #374151', background: showGuidelines ? '#ef444422' : 'transparent', color: showGuidelines ? '#ef4444' : '#6b7280', cursor: 'pointer' }}>GUIDES</button>
+                <button onClick={() => setUseSnapping(!useSnapping)} style={{ flex: 1, padding: '8px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', border: '1px solid #374151', background: useSnapping ? '#10b98122' : 'transparent', color: useSnapping ? '#10b981' : '#6b7280', cursor: 'pointer' }}>SNAPPING</button>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => {
@@ -518,35 +649,32 @@ export default function App() {
                       link.click();
                       setShowGuidelines(was);
                    }, 100);
-                }} style={{ ...S.btnAction, flex: 1, background: '#2563eb' }}><Download size={14}/> COMP</button>
-                <button onClick={handleBulkZipExport} disabled={isExportingZip || layers.length === 0} style={{ ...S.btnAction, flex: 1, background: '#059669' }}>
-                   {isExportingZip ? '...' : <Archive size={14}/>} ZIP
+                }} className="btn-action" style={{ flex: 1, background: '#2563eb' }}><Download size={14}/> Comp</button>
+                <button onClick={handleBulkZipExport} disabled={isExportingZip || layers.length === 0} className="btn-action" style={{ flex: 1, background: '#059669' }}>
+                   {isExportingZip ? '...' : <Archive size={14}/>} Zip
                 </button>
             </div>
         </div>
       </div>
 
       {/* Workspace */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
-        <div style={{ height: '56px', backgroundColor: '#0e0e0e', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#000', padding: '6px 16px', borderRadius: '20px', border: '1px solid #1f2937' }}>
+      <div className="workspace">
+        <div className="workspace-toolbar">
+            <div className="zoom-control">
                 <span style={{ fontSize: '10px', color: '#4b5563', fontWeight: 'bold' }}>ZOOM</span>
                 <input type="range" min="0.1" max="1.5" step="0.05" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} style={{ width: '100px', accentColor: '#3b82f6' }} />
                 <span style={{ fontSize: '10px', color: '#3b82f6', fontWeight: 'bold' }}>{Math.round(zoom * 100)}%</span>
             </div>
         </div>
         
-        <div 
-          style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px', backgroundColor: '#060606' }}
-          onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-        >
+        <div className="canvas-area" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
           <div style={{ position: 'relative', backgroundColor: 'white', width: `${CANVAS_SIZE * zoom}px`, height: `${CANVAS_SIZE * zoom}px`, boxShadow: '0 0 100px rgba(0,0,0,0.8)' }}>
             <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} onMouseDown={handleMouseDown} style={{ width: '100%', height: '100%', cursor: 'crosshair', display: 'block' }} />
           </div>
         </div>
         
-        <div style={{ height: '32px', backgroundColor: '#0e0e0e', borderTop: '1px solid #1f2937', display: 'flex', alignItems: 'center', px: '16px', fontSize: '9px', color: '#374151', letterSpacing: '0.1em', padding: '0 16px' }}>
-            1000 X 1000 PIXELS • ASSET ALIGNMENT SUITE
+        <div className="status-bar">
+            1000 X 1000 PIXELS • ASSET ALIGNMENT SUITE • {layers.length} LAYERS
         </div>
       </div>
     </div>

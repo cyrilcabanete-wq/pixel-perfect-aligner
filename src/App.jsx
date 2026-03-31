@@ -24,6 +24,7 @@ const SNAP_THRESHOLD = 15;
 const GUIDE_HIT_WIDTH = 25; 
 const RESIZE_HANDLE_SIZE = 12;
 
+// Utility to find the non-transparent/non-white edges of an image
 const getContentBounds = (img) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -80,6 +81,7 @@ export default function App() {
   const lastMousePos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
+    // Load JSZip for bulk export capability
     const script = document.createElement('script');
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
     script.async = true;
@@ -152,6 +154,7 @@ export default function App() {
       const ctx = exportCanvas.getContext('2d');
 
       for (const layer of layers) {
+        // Enforce White Background for every file
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
         
@@ -160,7 +163,7 @@ export default function App() {
         ctx.drawImage(layer.img, layer.x, layer.y, drawW, drawH);
         
         const blob = await new Promise(resolve => exportCanvas.toBlob(resolve, 'image/png'));
-        // ZIP logic: use original layer name exactly as provided
+        // Use original layer name
         zip.file(`${layer.name}.png`, blob);
       }
 
@@ -377,9 +380,10 @@ export default function App() {
   const currentLayer = layers.find(l => l.id === selectedLayerId);
 
   return (
-    <div className="flex h-screen bg-[#050505] text-gray-200 font-sans overflow-hidden">
-      <div className="w-80 border-r border-gray-800 bg-[#0e0e0e] flex flex-col z-20">
-        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#141414]">
+    <div className="flex h-screen w-full bg-[#050505] text-gray-200 font-sans overflow-hidden">
+      {/* Sidebar - Fixed width to prevent collapsing */}
+      <div className="w-80 h-full border-r border-gray-800 bg-[#0e0e0e] flex flex-col shrink-0 z-20 overflow-hidden">
+        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#141414] shrink-0">
           <h2 className="font-bold flex items-center gap-2 text-blue-400 text-sm tracking-tight">
             <LayoutGrid size={16} /> Asset Studio
           </h2>
@@ -389,7 +393,8 @@ export default function App() {
           </label>
         </div>
 
-        <div className="p-4 border-b border-gray-800 bg-emerald-500/5">
+        {/* Alignment Control */}
+        <div className="p-4 border-b border-gray-800 bg-emerald-500/5 shrink-0">
             <button 
                 onClick={bulkAlign}
                 disabled={layers.length < 2}
@@ -399,7 +404,8 @@ export default function App() {
             </button>
         </div>
 
-        <div className="p-4 bg-red-950/10 border-b border-gray-800 space-y-4">
+        {/* Margin Section */}
+        <div className="p-4 bg-red-950/10 border-b border-gray-800 space-y-4 shrink-0">
             <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest text-red-400 flex items-center gap-2">
                     <Square size={12} /> Margins
@@ -428,7 +434,8 @@ export default function App() {
             </div>
         </div>
 
-        <div className="p-4 bg-gray-900/20 border-b border-gray-800 space-y-3">
+        {/* Guide Management */}
+        <div className="p-4 bg-gray-900/20 border-b border-gray-800 space-y-3 shrink-0">
             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
                 <span className="flex items-center gap-2"><MoveHorizontal size={12} /> Custom Guides</span>
                 <div className="flex gap-1">
@@ -454,8 +461,9 @@ export default function App() {
             </div>
         </div>
 
+        {/* Active Layer Transform */}
         {currentLayer && (
-            <div className="p-4 bg-blue-600/5 border-b border-gray-800 space-y-4">
+            <div className="p-4 bg-blue-600/5 border-b border-gray-800 space-y-4 shrink-0">
                 <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-blue-500">
                     <span className="flex items-center gap-2"><Maximize size={12} /> Transform</span>
                     <span className="font-mono">{(currentLayer.scale * 100).toFixed(1)}%</span>
@@ -472,11 +480,12 @@ export default function App() {
             </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+        {/* Scrollable Layer Stack */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar min-h-0">
           {layers.map((layer, idx) => (
             <div key={layer.id} onClick={() => setSelectedLayerId(layer.id)} className={`p-2 rounded-lg border transition-all cursor-pointer ${selectedLayerId === layer.id ? 'bg-blue-600/10 border-blue-500/40' : 'bg-white/5 border-transparent'}`}>
               <div className="flex items-center gap-3">
-                <div className="relative">
+                <div className="relative shrink-0">
                   <img src={layer.thumbnail} alt="" className={`w-10 h-10 object-contain bg-black border border-gray-800 ${!layer.visible ? 'opacity-20 grayscale' : ''}`} />
                   {!layer.visible && <div className="absolute inset-0 flex items-center justify-center"><EyeOff size={14} className="text-gray-500" /></div>}
                 </div>
@@ -484,7 +493,7 @@ export default function App() {
                     <p className={`text-[10px] font-bold truncate ${!layer.visible ? 'text-gray-600' : 'text-gray-200'}`}>{layer.name}</p>
                     {idx === 0 && <span className="text-[7px] text-emerald-400 font-black uppercase tracking-tighter">Master Reference</span>}
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 shrink-0">
                   <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }} className={`p-1.5 rounded ${layer.visible ? 'text-blue-400' : 'text-gray-600'}`}>{layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}</button>
                   <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id) }} className="text-red-500 p-1.5 hover:bg-red-500/10 rounded"><Trash2 size={12} /></button>
                 </div>
@@ -493,7 +502,8 @@ export default function App() {
           )).reverse()}
         </div>
 
-        <div className="p-4 border-t border-gray-800 space-y-2 bg-[#121212]">
+        {/* Actions & Settings */}
+        <div className="p-4 border-t border-gray-800 space-y-2 bg-[#121212] shrink-0">
           <div className="flex gap-2">
             <button onClick={() => setShowGuidelines(!showGuidelines)} className={`flex-1 py-2 rounded text-[10px] font-bold uppercase transition-colors ${showGuidelines ? 'bg-red-600/20 text-red-400 border border-red-500/30' : 'bg-gray-800 text-gray-500'}`}>Guides</button>
             <button onClick={() => setUseSnapping(!useSnapping)} className={`flex-1 py-2 rounded text-[10px] font-bold uppercase transition-colors ${useSnapping ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800 text-gray-500'}`}>Snap</button>
@@ -515,26 +525,41 @@ export default function App() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col relative">
-        <div className="h-14 bg-[#0e0e0e] border-b border-gray-800 flex items-center px-6 justify-between">
+      {/* Workspace Area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#060606] relative">
+        <div className="h-14 bg-[#0e0e0e] border-b border-gray-800 flex items-center px-6 justify-between shrink-0">
           <div className="flex items-center gap-4 bg-black/40 px-4 py-1.5 rounded-full border border-gray-800">
                 <span className="text-[10px] uppercase font-bold text-gray-600 tracking-widest">Zoom</span>
                 <input type="range" min="0.1" max="1.5" step="0.05" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-24 accent-blue-600 h-1" />
                 <span className="text-[11px] font-mono font-black text-blue-500 w-10 text-right">{Math.round(zoom * 100)}%</span>
           </div>
         </div>
-        <div className="flex-1 overflow-auto flex items-center justify-center bg-[#060606] p-16 relative" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-          <div className="relative bg-white shadow-[0_0_120px_rgba(0,0,0,0.9)] ring-1 ring-white/10" style={{ width: `${CANVAS_SIZE * zoom}px`, height: `${CANVAS_SIZE * zoom}px` }}>
+        
+        {/* Canvas Scroller */}
+        <div className="flex-1 overflow-auto flex items-center justify-center relative p-16" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+          <div className="relative bg-white shadow-[0_0_120px_rgba(0,0,0,0.9)] ring-1 ring-white/10 shrink-0" style={{ width: `${CANVAS_SIZE * zoom}px`, height: `${CANVAS_SIZE * zoom}px` }}>
             <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} onMouseDown={handleMouseDown} className="w-full h-full block cursor-crosshair touch-none" />
           </div>
         </div>
-        <div className="h-10 bg-[#0e0e0e] border-t border-gray-800 px-6 flex items-center text-[9px] font-bold text-gray-600 gap-8 uppercase tracking-[0.2em]">
+
+        <div className="h-10 bg-[#0e0e0e] border-t border-gray-800 px-6 flex items-center text-[9px] font-bold text-gray-600 gap-8 uppercase tracking-[0.2em] shrink-0">
             <span>1000x1000 Master Grid</span>
-            <span className="text-blue-400">Hold Shift for Aspect Ratio (Coming soon)</span>
+            <span className="text-blue-400">Click & Drag to move • Shift + Scroll to zoom</span>
         </div>
       </div>
 
       <style>{`
+        /* Safety Reset */
+        html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050505; }
+        
+        /* Flexbox protection for the editor environment */
+        .flex { display: flex !important; }
+        .h-screen { height: 100vh !important; }
+        .w-full { width: 100% !important; }
+        .shrink-0 { flex-shrink: 0 !important; }
+        .min-w-0 { min-width: 0 !important; }
+
+        /* Scrollers */
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
